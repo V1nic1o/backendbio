@@ -1,0 +1,35 @@
+# Entornos virtuales
+venv/
+venv310/
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+
+# Archivos de configuración y secretos
+.env
+
+# Archivos temporales
+*.log
+*.sqlite3
+*.db
+*.swp
+.DS_Store
+Thumbs.db
+
+# Archivos de compilación o backup
+*.bak
+*.tmp
+*.orig
+
+# Imágenes generadas o almacenadas
+imagenes_rostros/
+
+# Archivos específicos de VSCode
+.vscode/
+
+# Archivos de Render (opcional)
+*.render-project
+
+# Otros posibles directorios ocultos o archivos temporales
+.idea/
