@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Date, Time, Float, ForeignKey
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 class Evento(Base):
@@ -10,3 +11,6 @@ class Evento(Base):
     fecha = Column(Date)
     hora = Column(Time)
     timestamp = Column(Float)
+
+    # 🔹 Relación con el modelo Usuario
+    usuario = relationship("Usuario", back_populates="eventos")

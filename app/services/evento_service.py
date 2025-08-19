@@ -1,10 +1,11 @@
 import os
 import face_recognition
 from fastapi import UploadFile
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 from app.models.evento_model import Evento
 from app.models.usuario_model import Usuario
+import io
 
 # Ruta a las imágenes registradas
 RUTA_IMAGENES = "imagenes_rostros"
@@ -16,7 +17,7 @@ def registrar_evento(db: Session, usuario_id: int, tipo: str):
         tipo=tipo,
         fecha=ahora.date(),
         hora=ahora.time(),
-        timestamp=ahora.timestamp()
+        timestamp=float(ahora.timestamp())
     )
     db.add(nuevo_evento)
     db.commit()
@@ -24,13 +25,15 @@ def registrar_evento(db: Session, usuario_id: int, tipo: str):
     return nuevo_evento
 
 def obtener_eventos(db: Session):
-    return db.query(Evento).all()
+    # ✅ Incluir la relación con el usuario para acceder a su nombre
+    eventos = db.query(Evento).options(joinedload(Evento.usuario)).all()
+    return eventos
 
 async def registrar_evento_con_rostro(db: Session, file: UploadFile):
     contenido = await file.read()
+    buffer = io.BytesIO(contenido)
 
-    # Cargar imagen enviada
-    imagen_desconocida = face_recognition.load_image_file(file.file)
+    imagen_desconocida = face_recognition.load_image_file(buffer)
     rostros_desconocidos = face_recognition.face_encodings(imagen_desconocida)
 
     if not rostros_desconocidos:
@@ -38,9 +41,8 @@ async def registrar_evento_con_rostro(db: Session, file: UploadFile):
 
     encoding_desconocido = rostros_desconocidos[0]
 
-    # Recorrer las imágenes registradas
     for archivo in os.listdir(RUTA_IMAGENES):
-        if archivo.endswith(".jpg") or archivo.endswith(".jpeg") or archivo.endswith(".png"):
+        if archivo.lower().endswith((".jpg", ".jpeg", ".png")):
             ruta_completa = os.path.join(RUTA_IMAGENES, archivo)
 
             imagen_registrada = face_recognition.load_image_file(ruta_completa)
@@ -49,14 +51,11 @@ async def registrar_evento_con_rostro(db: Session, file: UploadFile):
             if encoding_registrado:
                 resultado = face_recognition.compare_faces([encoding_registrado[0]], encoding_desconocido)
                 if resultado[0]:
-                    # Extraer nombre del archivo (sin extensión)
-                    nombre_archivo = os.path.splitext(archivo)[0]
-
-                    # Buscar usuario en DB
-                    usuario = db.query(Usuario).filter(Usuario.nombre == nombre_archivo).first()
+                    # ✅ Buscar por ruta completa (como ya se guarda)
+                    usuario = db.query(Usuario).filter(Usuario.imagen_path == ruta_completa).first()
                     if usuario:
                         return registrar_evento(db, usuario.id, "inicio_sesion")
                     else:
-                        raise ValueError(f"Usuario '{nombre_archivo}' no encontrado en la base de datos")
+                        raise ValueError(f"Usuario con imagen '{archivo}' no encontrado en la base de datos")
 
     raise ValueError("Usuario no reconocido")

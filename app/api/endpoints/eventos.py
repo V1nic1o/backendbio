@@ -17,7 +17,15 @@ def get_db():
 async def registrar(file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
         evento = await registrar_evento_con_rostro(db, file)
-        return evento
+        return EventoOut(
+            id=evento.id,
+            usuario_id=evento.usuario_id,
+            tipo=evento.tipo,
+            fecha=evento.fecha,
+            hora=evento.hora,
+            timestamp=evento.timestamp,
+            nombre_usuario=evento.usuario.nombre  # ✅ esto evita el error
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -25,4 +33,18 @@ async def registrar(file: UploadFile = File(...), db: Session = Depends(get_db))
 
 @router.get("/", response_model=list[EventoOut])
 def listar(db: Session = Depends(get_db)):
-    return obtener_eventos(db)
+    eventos = obtener_eventos(db)
+
+    # 🔹 Convertimos manualmente los resultados
+    return [
+        EventoOut(
+            id=evento.id,
+            usuario_id=evento.usuario_id,
+            tipo=evento.tipo,
+            fecha=evento.fecha,
+            hora=evento.hora,
+            timestamp=evento.timestamp,
+            nombre_usuario=evento.usuario.nombre
+        )
+        for evento in eventos
+    ]

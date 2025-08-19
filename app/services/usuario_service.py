@@ -1,8 +1,8 @@
+from sqlalchemy.orm import Session
 import os
 import uuid
 import numpy as np
 from fastapi import UploadFile
-from sqlalchemy.orm import Session
 from app.models.usuario_model import Usuario
 from app.schemas.usuario_schema import UsuarioCreate
 import face_recognition
@@ -11,7 +11,6 @@ from io import BytesIO
 
 UPLOAD_DIR = "imagenes_rostros"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 
 def crear_usuario(db: Session, nombre: str, imagen: UploadFile):
     try:
@@ -25,14 +24,16 @@ def crear_usuario(db: Session, nombre: str, imagen: UploadFile):
 
         codificacion = codificaciones[0]
 
-        filename = f"{uuid.uuid4().hex}.jpg"
+        # 🟢 Nombre único para imagen, sin extensión
+        filename_base = uuid.uuid4().hex
+        filename = f"{filename_base}.jpg"
         ruta_imagen = os.path.join(UPLOAD_DIR, filename)
         img.save(ruta_imagen)
 
         db_usuario = Usuario(
             nombre=nombre,
             codificacion=codificacion.tobytes(),
-            imagen_path=ruta_imagen
+            imagen_path=filename_base  # 🟢 Guardamos solo el nombre base para compararlo luego
         )
         db.add(db_usuario)
         db.commit()
@@ -66,13 +67,13 @@ def verificar_facial(db: Session, imagen: UploadFile):
             resultados = face_recognition.compare_faces(
                 [codificacion_guardada],
                 codificacion_actual,
-                tolerance=0.45  # puedes ajustar la tolerancia
+                tolerance=0.45
             )
 
             if resultados[0]:
-                return usuario  # Usuario reconocido
+                return usuario
 
-        return None  # No se encontró coincidencia
+        return None
 
     except Exception as e:
         raise RuntimeError(f"Error en el reconocimiento facial: {str(e)}")
